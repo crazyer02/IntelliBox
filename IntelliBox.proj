@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+
+    <Import Project="References\MSBuild.Community.Tasks.Targets"/>
+    
+    <PropertyGroup>
+        <SolutionFile>IntelliBox.sln</SolutionFile>
+        <Configuration>Debug</Configuration>
+        <Version>1.1.0.0</Version>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <AssemblyInfoFiles Include="IntelliBox\Properties\CommonAssemblyInfo.cs" />
+
+        <LibFiles Include="$(Configuration)\IntelliBox.*" />
+        <LibFiles Include="$(Configuration)\*.chm" />
+
+        <ExampleFiles Include="$(Configuration)\*.exe" Exclude="$(Configuration)\*vshost.exe"/>
+        <ExampleFiles Include="$(Configuration)\*.dll" />
+        <ExampleFiles Include="$(Configuration)\*.sdf" />
+        <ExampleFiles Include="$(Configuration)\*.config" />
+
+        <SourceFiles Include="*.proj;*.sln;*.shfbproj" />
+        <SourceFiles Include="Examples\**\*.*" Exclude="Examples\.svn\**\*.*;Examples\Properties\.svn\**\*.*;Examples\obj\**\*.*"/>
+        <SourceFiles Include="IntelliBox\**\*.*" Exclude="IntelliBox\.svn\**\*.*;IntelliBox\Properties\.svn\**\*.*;IntelliBox\obj\**\*.*"/>
+        <SourceFiles Include="References\**\*.*" Exclude="References\.svn\**\*.*;References\obj\**\*.*"/>
+        <SourceFiles Include="IntelliboxL2E\**\*.*" Exclude="IntelliboxL2E\.svn\**\*.*;IntelliboxL2E\Properties\.svn\**\*.*;IntelliboxL2E\obj\**\*.*"/>
+
+    </ItemGroup>
+    
+    
+    <Target Name="help">
+        <Message Text="Configuration : $(Configuration)" />
+        <Message Text="      Version : $(Version)" />
+        <Message Text="" />
+        <Message Text="---- Available Targets ----" />
+        <Message Text="Build (default target)" />
+        <Message Text="    Builds the entire project." />
+        <Message Text="Clean" />
+        <Message Text="    Removes all files created by the Build target." />
+        <Message Text="BuildForRelease" />
+        <Message Text="    Builds the entire project including documentation and places a releasable"/>
+        <Message Text="    zip file in the 'Installers' folder." />
+        <!-- <Message Text="" /> -->
+        <!-- <Message Text="    " /> -->
+    </Target>
+
+    <Target Name="BuildForRelease" DependsOnTargets="Build;CreateInstallers" />
+    
+    <Target Name="Build" DependsOnTargets="Clean;SetVersionNumber">
+        <MSBuild Projects="$(SolutionFile)" Targets="Rebuild"
+                 Properties="Configuration=$(Configuration);Platform=x86"
+                 StopOnFirstFailure="true" />
+    </Target>
+
+    <Target Name="CreateInstallers" DependsOnTargets="CreateDocumentation">
+        <CreateItem Include="@(SourceFiles -> 'source/%(identity)')" >
+            <Output ItemName="dest_SourceFiles"
+                    TaskParameter="Include" />
+        </CreateItem>
+
+        <CreateItem Include="@(LibFiles -> 'lib/%(filename)%(extension)')" >
+            <Output ItemName="dest_LibFiles"
+                    TaskParameter="Include" />
+        </CreateItem>
+
+        <CreateItem Include="@(ExampleFiles -> 'example/%(filename)%(extension)')" >
+            <Output ItemName="dest_ExampleFiles"
+                    TaskParameter="Include" />
+        </CreateItem>
+        
+        <ItemGroup>
+            <HelpFiles Include="Help\**\*.*" />
+        </ItemGroup>
+        
+        <Copy SourceFiles="@(SourceFiles)"
+              DestinationFiles="@(dest_SourceFiles)" />
+
+        <Copy SourceFiles="@(LibFiles)"
+              DestinationFiles="@(dest_LibFiles)" />
+
+        <Copy SourceFiles="@(ExampleFiles)"
+              DestinationFiles="@(dest_ExampleFiles)" />
+
+        <Zip Files="@(dest_SourceFiles);@(dest_LibFiles);@(dest_ExampleFiles);@(HelpFiles);"
+             ZipFileName="Intellibox-$(Version).zip" />
+
+        <Exec Command="rmdir /S /Q example" />
+        <Exec Command="rmdir /S /Q lib" />
+        <Exec Command="rmdir /S /Q source" />
+    </Target>
+
+    <Target Name="CreateDocumentation" DependsOnTargets="NeedSandcastleInstalled;CreateDocumentationWork" />
+
+    <Target Name="CreateDocumentationWork" Condition="Exists($(SHFBROOT))">
+        <MSBuild Projects="documentation-$(Configuration).shfbproj"
+                 Properties="Configuration=$(Configuration)"
+                 StopOnFirstFailure="true" />
+    
+        <ItemGroup>
+            <HelpFiles Include="Help\**\*.*" />
+        </ItemGroup>
+        
+        <Zip Files="@(HelpFiles)"
+             ZipFileName="IntelliboxHelp-$(Version).zip" />
+    </Target>
+    
+    <Target Name="NeedSandcastleInstalled" Condition="!Exists($(SHFBROOT))">
+        <Warning Text="Sandcastle and the Sandcastle Help File Builder must be installed to create documentation." />
+        <Warning Text="Sandcastle: http://sandcastle.codeplex.com/" />
+        <Warning Text="Sandcastle Help File Builder: http://shfb.codeplex.com/" />
+    </Target>
+    
+    <Target Name="Clean">
+        <!-- must clean up from the previous build -->
+        <Exec Command="del /F /Q Intellibox*.zip" />
+        
+        <Exec Command="IF NOT EXIST $(Configuration). MKDIR $(Configuration)" />
+        <Exec Command="del /F /Q $(Configuration)\*" />
+    </Target>
+
+    <Target Name="SetVersionNumber">
+        <Attrib Files="@(AssemblyInfoFiles)" Normal="true" />
+        <FileUpdate Files="@(AssemblyInfoFiles)"
+            Regex="AssemblyVersion\(&quot;.*&quot;\)]"
+            ReplacementText="AssemblyVersion(&quot;$(Version)&quot;)]" />
+
+        <FileUpdate Files="@(AssemblyInfoFiles)"
+            Regex="AssemblyFileVersion\(&quot;.*&quot;\)]"
+            ReplacementText="AssemblyFileVersion(&quot;$(Version)&quot;)]" />
+    </Target>    
+</Project>
