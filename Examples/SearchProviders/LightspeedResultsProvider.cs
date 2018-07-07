@@ -65,5 +65,10 @@ namespace Examples.SearchProviders
                   .StartsWith(searchTerm));
             //}
         }
+
+        public string GetCurrentText(string selectedValue)
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

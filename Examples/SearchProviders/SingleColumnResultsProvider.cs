@@ -58,5 +58,10 @@ namespace Examples.SearchProviders
             ConstructDataSource();
             return _results.Where(term => term.StartsWith(searchTerm)).Take(maxResults);
         }
+
+        public string GetCurrentText(string selectedValue)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

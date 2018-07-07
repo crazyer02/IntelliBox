@@ -97,5 +97,10 @@ namespace Examples.SearchProviders
                 return new AlphabetCharacter(i);
             });
         }
+
+        public string GetCurrentText(string selectedValue)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

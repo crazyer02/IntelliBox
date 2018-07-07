@@ -156,6 +156,12 @@
     </BootstrapperPackage>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>mkdir "D:\ksd_run\LIP"
+xcopy /y "$(TargetPath)" "D:\ksd_run\LIP"
+mkdir "D:\ksd_Assmebly\LIP"
+xcopy /y "$(TargetPath)" "D:\ksd_Assmebly\LIP"</PostBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

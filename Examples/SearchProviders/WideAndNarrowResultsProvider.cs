@@ -55,6 +55,11 @@ namespace Examples.SearchProviders
             return null;
         }
 
+        public string GetCurrentText(string selectedValue)
+        {
+            throw new NotImplementedException();
+        }
+
         class WideAndNarrowResult
         {
             public string Name { get; set; }

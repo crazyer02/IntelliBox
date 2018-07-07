@@ -1,5 +1,6 @@
 ﻿/*
 Copyright (c) 2010 Stephen P Ward and Joseph E Feser
+2018 edited by Blake
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -22,214 +23,232 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
+
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Diagnostics;
-using System.Collections;
 using System.Windows.Threading;
-using System.Windows;
-using System;
-using System.Windows.Controls;
-using System.Windows.Documents;
 
 namespace FeserWard.Controls
 {
     /// <summary>
-    /// An implementation of the MS Access 'Lookup' field for WPF that uses the Provider pattern.
-    /// <list type="bullet">
-    ///     <listheader>
-    ///         <description>Features</description>
-    ///     </listheader>
-    ///     <item>
-    ///         <description>Text shown in the search field can be different from the value selected by the user.</description>
-    ///     </item>
-    ///     <item>
-    ///         <description>Fully supports syncronous and asyncronous searches.</description>
-    ///     </item>
-    ///     <item>
-    ///         <description>Displayed columns can be fully customized.</description>
-    ///     </item>
-    ///     <item>
-    ///         <description>Supports search cancelation.</description>
-    ///     </item>
-    ///     <item>
-    ///         <description>Supports watermark text that shows when the control doesn't have focus or any content.</description>
-    ///     </item>
-    /// </list>
+    ///     An implementation of the MS Access 'Lookup' field for WPF that uses the Provider pattern.
+    ///     <list type="bullet">
+    ///         <listheader>
+    ///             <description>Features</description>
+    ///         </listheader>
+    ///         <item>
+    ///             <description>Text shown in the search field can be different from the value selected by the user.</description>
+    ///         </item>
+    ///         <item>
+    ///             <description>Fully supports syncronous and asyncronous searches.</description>
+    ///         </item>
+    ///         <item>
+    ///             <description>Displayed columns can be fully customized.</description>
+    ///         </item>
+    ///         <item>
+    ///             <description>Supports search cancelation.</description>
+    ///         </item>
+    ///         <item>
+    ///             <description>Supports watermark text that shows when the control doesn't have focus or any content.</description>
+    ///         </item>
+    ///     </list>
     /// </summary>
     public partial class Intellibox : UserControl
     {
-
         private const int MinimumSearchDelayMS = 125;
 
         /// <summary>
-        /// Identifies the <see cref="DataProviderProperty"/> Dependancy Property.
+        ///     Identifies the <see cref="DataProviderProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty DataProviderProperty =
             DependencyProperty.Register("DataProvider", typeof(IIntelliboxResultsProvider), typeof(Intellibox),
-            new UIPropertyMetadata(new PropertyChangedCallback(OnDataProviderChanged)));
+                new UIPropertyMetadata(OnDataProviderChanged));
 
         /// <summary>
-        /// For Internal Use Only. Identifies the <see cref="DisplayTextFromHighlightedItemProperty"/> Dependancy Property.
+        ///     For Internal Use Only. Identifies the <see cref="DisplayTextFromHighlightedItemProperty" /> Dependancy Property.
         /// </summary>
         protected static readonly DependencyProperty DisplayTextFromHighlightedItemProperty =
-            DependencyProperty.Register("DisplayTextFromHighlightedItem", typeof(string), typeof(Intellibox), new UIPropertyMetadata(null));
+            DependencyProperty.Register("DisplayTextFromHighlightedItem", typeof(string), typeof(Intellibox),
+                new UIPropertyMetadata(null));
 
         /// <summary>
-        /// For Internal Use Only. Identifies the <see cref="DisplayTextFromSelectedItemProperty"/> Dependancy Property.
+        ///     For Internal Use Only. Identifies the <see cref="DisplayTextFromSelectedItemProperty" /> Dependancy Property.
         /// </summary>
         protected static readonly DependencyProperty DisplayTextFromSelectedItemProperty =
-            DependencyProperty.Register("DisplayTextFromSelectedItem", typeof(string), typeof(Intellibox), new UIPropertyMetadata(null));
+            DependencyProperty.Register("DisplayTextFromSelectedItem", typeof(string), typeof(Intellibox),
+                new UIPropertyMetadata(null));
 
         /// <summary>
-        /// Identifies the <see cref="HideColumnHeadersProperty"/> Dependancy Property.
+        ///     Identifies the <see cref="HideColumnHeadersProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty HideColumnHeadersProperty =
-            DependencyProperty.Register("HideColumnHeaders", typeof(bool), typeof(Intellibox), new UIPropertyMetadata(false));
+            DependencyProperty.Register("HideColumnHeaders", typeof(bool), typeof(Intellibox),
+                new UIPropertyMetadata(false));
 
         /// <summary>
-        /// For Internal Use Only. Identifies the <see cref="ItemsProperty"/> Dependancy Property.
+        ///     For Internal Use Only. Identifies the <see cref="ItemsProperty" /> Dependancy Property.
         /// </summary>
         protected static readonly DependencyProperty ItemsProperty =
             DependencyProperty.Register("Items", typeof(IList), typeof(Intellibox), new UIPropertyMetadata(null));
 
         /// <summary>
-        /// For Internal Use Only. Identifies the <see cref="IntermediateSelectedValueProperty"/> Dependancy Property.
+        ///     For Internal Use Only. Identifies the <see cref="IntermediateSelectedValueProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty IntermediateSelectedValueProperty =
-            DependencyProperty.Register("IntermediateSelectedValue", typeof(object), typeof(Intellibox), new UIPropertyMetadata(null));
+            DependencyProperty.Register("IntermediateSelectedValue", typeof(object), typeof(Intellibox),
+                new UIPropertyMetadata(null));
 
         /// <summary>
-        /// Identifies the <see cref="MaxResultsProperty"/> Dependancy Property.
+        ///     Identifies the <see cref="MaxResultsProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty MaxResultsProperty =
             DependencyProperty.Register("MaxResults", typeof(int), typeof(Intellibox), new UIPropertyMetadata(10));
 
         /// <summary>
-        /// Identifies the <see cref="MinimumPrefixLengthProperty"/> Dependancy Property.
+        ///     Identifies the <see cref="MinimumPrefixLengthProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty MinimumPrefixLengthProperty =
             DependencyProperty.Register("MinimumPrefixLength", typeof(int), typeof(Intellibox),
-            new UIPropertyMetadata(1, null, CoerceMinimumPrefixLengthProperty));
+                new UIPropertyMetadata(1, null, CoerceMinimumPrefixLengthProperty));
 
         /// <summary>
-        /// Identifies the <see cref="MinimumSearchDelayProperty"/> Dependancy Property. Default is 250 milliseconds.
+        ///     Identifies the <see cref="MinimumSearchDelayProperty" /> Dependancy Property. Default is 250 milliseconds.
         /// </summary>
         public static readonly DependencyProperty MinimumSearchDelayProperty =
             DependencyProperty.Register("MinimumSearchDelay", typeof(int), typeof(Intellibox),
-            new UIPropertyMetadata(250, null, CoerceMinimumSearchDelayProperty));
+                new UIPropertyMetadata(250, null, CoerceMinimumSearchDelayProperty));
 
         /// <summary>
-        ///Using a DependencyProperty as the backing store for PageUpOrDownScrollRows.  This enables animation, styling, binding, etc... 
+        ///     Using a DependencyProperty as the backing store for PageUpOrDownScrollRows.  This enables animation, styling,
+        ///     binding, etc...
         /// </summary>
         public static readonly DependencyProperty PagingScrollRowsProperty =
             DependencyProperty.Register("PagingScrollRows", typeof(int), typeof(Intellibox), new UIPropertyMetadata(0));
 
         /// <summary>
-        /// Identifies the <see cref="ResultsHeightProperty"/> Dependancy Property.
+        ///     Identifies the <see cref="ResultsHeightProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty ResultsHeightProperty =
-            DependencyProperty.Register("ResultsHeight", typeof(double), typeof(Intellibox), new UIPropertyMetadata(double.NaN));
+            DependencyProperty.Register("ResultsHeight", typeof(double), typeof(Intellibox),
+                new UIPropertyMetadata(double.NaN));
 
         /// <summary>
-        /// Identifies the <see cref="ResultsMaxHeightProperty"/> Dependancy Property.
+        ///     Identifies the <see cref="ResultsMaxHeightProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty ResultsMaxHeightProperty =
-            DependencyProperty.Register("ResultsMaxHeight", typeof(double), typeof(Intellibox), new UIPropertyMetadata(double.PositiveInfinity));
+            DependencyProperty.Register("ResultsMaxHeight", typeof(double), typeof(Intellibox),
+                new UIPropertyMetadata(double.PositiveInfinity));
 
         /// <summary>
-        /// Identifies the <see cref="ResultsMaxWidthProperty"/> Dependancy Property.
+        ///     Identifies the <see cref="ResultsMaxWidthProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty ResultsMaxWidthProperty =
-            DependencyProperty.Register("ResultsMaxWidth", typeof(double), typeof(Intellibox), new UIPropertyMetadata(double.PositiveInfinity));
+            DependencyProperty.Register("ResultsMaxWidth", typeof(double), typeof(Intellibox),
+                new UIPropertyMetadata(double.PositiveInfinity));
 
         /// <summary>
-        /// Identifies the <see cref="ResultsMinHeightProperty"/> Dependancy Property.
+        ///     Identifies the <see cref="ResultsMinHeightProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty ResultsMinHeightProperty =
-            DependencyProperty.Register("ResultsMinHeight", typeof(double), typeof(Intellibox), new UIPropertyMetadata(0d));
+            DependencyProperty.Register("ResultsMinHeight", typeof(double), typeof(Intellibox),
+                new UIPropertyMetadata(0d));
 
         /// <summary>
-        /// Identifies the <see cref="ResultsMinWidthProperty"/> Dependancy Property.
+        ///     Identifies the <see cref="ResultsMinWidthProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty ResultsMinWidthProperty =
-                    DependencyProperty.Register("ResultsMinWidth", typeof(double), typeof(Intellibox), new UIPropertyMetadata(0d));
+            DependencyProperty.Register("ResultsMinWidth", typeof(double), typeof(Intellibox),
+                new UIPropertyMetadata(0d));
 
         /// <summary>
-        /// Identifies the <see cref="ResultsWidthProperty"/> Dependancy Property.
+        ///     Identifies the <see cref="ResultsWidthProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty ResultsWidthProperty =
-            DependencyProperty.Register("ResultsWidth", typeof(double), typeof(Intellibox), new UIPropertyMetadata(double.NaN));
+            DependencyProperty.Register("ResultsWidth", typeof(double), typeof(Intellibox),
+                new UIPropertyMetadata(double.NaN));
 
         /// <summary>
-        /// Identifies the <see cref="SelectedItemProperty"/> Dependancy Property.
+        ///     Identifies the <see cref="SelectedItemProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty SelectedItemProperty =
             DependencyProperty.Register("SelectedItem", typeof(object), typeof(Intellibox),
-                new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, new PropertyChangedCallback(OnSelectedItemChanged)));
+                new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+                    OnSelectedItemChanged));
 
         /// <summary>
-        /// Identifies the <see cref="SelectedValueProperty"/> Dependancy Property.
+        ///     Identifies the <see cref="SelectedValueProperty" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty SelectedValueProperty =
             DependencyProperty.Register("SelectedValue", typeof(object), typeof(Intellibox),
-                new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, new PropertyChangedCallback(Intellibox.OnSelectedValueChanged)));
+                new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+                    OnSelectedValueChanged));
 
         /// <summary>
-        /// For Internal Use Only. Identifies the <see cref="ShowResultsProperty"/> Dependancy Property.
+        ///     For Internal Use Only. Identifies the <see cref="ShowResultsProperty" /> Dependancy Property.
         /// </summary>
         protected static readonly DependencyProperty ShowResultsProperty =
             DependencyProperty.Register("ShowResults", typeof(bool), typeof(Intellibox), new UIPropertyMetadata(false));
 
         /// <summary>
-        /// Identifies the <see cref="WatermarkBackground"/> Dependancy Property.
+        ///     Identifies the <see cref="WatermarkBackground" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty WatermarkBackgroundProperty =
-            DependencyProperty.Register("WatermarkBackground", typeof(Brush), typeof(Intellibox), new UIPropertyMetadata(new SolidColorBrush(Colors.Transparent)));
+            DependencyProperty.Register("WatermarkBackground", typeof(Brush), typeof(Intellibox),
+                new UIPropertyMetadata(new SolidColorBrush(Colors.Transparent)));
 
         /// <summary>
-        /// Identifies the <see cref="WatermarkFontStyle"/> Dependancy Property.
+        ///     Identifies the <see cref="WatermarkFontStyle" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty WatermarkFontStyleProperty =
-            DependencyProperty.Register("WatermarkFontStyle", typeof(FontStyle), typeof(Intellibox), new UIPropertyMetadata(FontStyles.Italic));
+            DependencyProperty.Register("WatermarkFontStyle", typeof(FontStyle), typeof(Intellibox),
+                new UIPropertyMetadata(FontStyles.Italic));
 
         /// <summary>
-        /// Identifies the <see cref="TimeBeforeWaitNotification"/> Dependancy Property. Default is 125 milliseconds.
+        ///     Identifies the <see cref="TimeBeforeWaitNotification" /> Dependancy Property. Default is 125 milliseconds.
         /// </summary>
         public static readonly DependencyProperty TimeBeforeWaitNotificationProperty =
             DependencyProperty.Register("TimeBeforeWaitNotification", typeof(int), typeof(Intellibox),
-            new UIPropertyMetadata(125, null, CoerceTimeBeforeWaitNotificationProperty));
+                new UIPropertyMetadata(125, null, CoerceTimeBeforeWaitNotificationProperty));
 
         /// <summary>
-        /// Identifies the <see cref="WatermarkFontWeight"/> Dependancy Property.
+        ///     Identifies the <see cref="WatermarkFontWeight" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty WatermarkFontWeightProperty =
-            DependencyProperty.Register("WatermarkFontWeight", typeof(FontWeight), typeof(Intellibox), new UIPropertyMetadata(FontWeights.Normal));
+            DependencyProperty.Register("WatermarkFontWeight", typeof(FontWeight), typeof(Intellibox),
+                new UIPropertyMetadata(FontWeights.Normal));
 
         /// <summary>
-        /// Identifies the <see cref="WatermarkForeground"/> Dependancy Property.
+        ///     Identifies the <see cref="WatermarkForeground" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty WatermarkForegroundProperty =
-            DependencyProperty.Register("WatermarkForeground", typeof(Brush), typeof(Intellibox), new UIPropertyMetadata(new SolidColorBrush(Colors.Gray)));
+            DependencyProperty.Register("WatermarkForeground", typeof(Brush), typeof(Intellibox),
+                new UIPropertyMetadata(new SolidColorBrush(Colors.Gray)));
 
         /// <summary>
-        /// Identifies the <see cref="WatermarkText"/> Dependancy Property.
+        ///     Identifies the <see cref="WatermarkText" /> Dependancy Property.
         /// </summary>
         public static readonly DependencyProperty WatermarkTextProperty =
-            DependencyProperty.Register("WatermarkText", typeof(string), typeof(Intellibox), new UIPropertyMetadata(string.Empty));
+            DependencyProperty.Register("WatermarkText", typeof(string), typeof(Intellibox),
+                new UIPropertyMetadata(string.Empty));
 
         /// <summary>
-        /// Identifies the <see cref="AutoSelectSingleResult"/> Dependancy Property
+        ///     Identifies the <see cref="AutoSelectSingleResult" /> Dependancy Property
         /// </summary>
         public static readonly DependencyProperty AutoSelectSingleResultProperty =
             DependencyProperty.Register("AutoSelectSingleResult", typeof(bool), typeof(Intellibox),
-            new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
+                new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
 
-        private static Type[] _baseTypes = new[] {
+        private static readonly Type[] _baseTypes =
+        {
             typeof(bool), typeof(byte), typeof(sbyte), typeof(char), typeof(decimal),
             typeof(double), typeof(float),
             typeof(short), typeof(ushort), typeof(int), typeof(uint), typeof(long), typeof(ulong),
@@ -237,646 +256,16 @@ namespace FeserWard.Controls
         };
 
         private ICommand _cancelAllSearches;
-        private DateTime _lastTimeSearchRecievedUtc;
-        private string _lastTextValue;
-        private BindingBase _selectedValueBinding;
         private BindingBase _displayedValueBinding;
+        private string _lastTextValue;
+        private DateTime _lastTimeSearchRecievedUtc;
         private IntelliboxRowColorizer _rowColorizer;
-
-        /// <summary>
-        /// This event is fired immediately before a new search is started.
-        /// Note that not every <see cref="SearchBeginning"/> event has a matching <see cref="SearchCompleted"/> event.
-        /// </summary>
-        public event Action<string, int, object> SearchBeginning;
+        private BindingBase _selectedValueBinding;
         private Func<string, string> _selectValueCallBack;
 
         /// <summary>
-        /// This event is fired once a search has completed and the search results have been processed.
-        /// Note that not every <see cref="SearchBeginning"/> event has a matching <see cref="SearchCompleted"/> event.
-        /// </summary>
-        public event Action SearchCompleted;
-
-        /// <summary>
-        /// Cancel all pending searches for the provider.
-        /// </summary>
-        public ICommand CancelAllSearches
-        {
-            get
-            {
-                if (_cancelAllSearches == null)
-                {
-                    _cancelAllSearches = new DelegateCommand(CancelSelection);
-                }
-                return _cancelAllSearches;
-            }
-        }
-
-        /// <summary>
-        /// The columns in the search result set to display. When <see cref="ExplicitlyIncludeColumns"/>
-        /// is set to true, then only the <see cref="IntelliboxColumn"/>s in this collection will be shown.
-        /// Setting <see cref="HideColumnHeaders"/> to true will prevent column headers from being shown.
-        /// </summary>
-        public IntelliboxColumnCollection Columns
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
-        /// This is the <see cref="IIntelliboxResultsProvider"/> that the <see cref="Intellibox"/> uses
-        /// to ask for search results. This is a Dependancy Property.
-        /// </summary>
-        public IIntelliboxResultsProvider DataProvider
-        {
-            get
-            {
-                return (IIntelliboxResultsProvider)GetValue(DataProviderProperty);
-            }
-            set
-            {
-                SetValue(DataProviderProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// When True, the text in the search field will NOT be trimmed for
-        /// whitespace prior to being passed to the <see cref="DataProvider"/>.
-        /// </summary>
-        public bool DisableWhitespaceTrim
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
-        /// A binding expression that determines which column in the search result set
-        /// displays its value in the text field. Typically, the value displayed should
-        /// correspond to the column the <see cref="DataProvider"/> searches on. This binding
-        /// expression can be different from the on in the <see cref="SelectedValueBinding"/>.
-        /// If this property is NULL, then an entire row from the search result set displays
-        /// its value in the text field.
-        /// This is a Dependancy Property.
-        /// </summary>
-        public BindingBase DisplayedValueBinding
-        {
-            get
-            {
-                return _displayedValueBinding;
-            }
-            set
-            {
-                if (_displayedValueBinding != value)
-                {
-                    _displayedValueBinding = value;
-                    //the call is commented out so that people can type w/o the displayed value overwriting what they're trying to do
-                    OnDisplayedValueBindingChanged();
-                }
-            }
-        }
-
-        private string DisplayTextFromHighlightedItem
-        {
-            get
-            {
-                return (string)GetValue(DisplayTextFromHighlightedItemProperty);
-            }
-            set
-            {
-                SetValue(DisplayTextFromHighlightedItemProperty, value);
-            }
-        }
-
-        private string DisplayTextFromSelectedItem
-        {
-            get
-            {
-                return (string)GetValue(DisplayTextFromSelectedItemProperty);
-            }
-            set
-            {
-                SetValue(DisplayTextFromSelectedItemProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// When True, only the <see cref="IntelliboxColumn"/>s in the <see cref="Columns"/> collection
-        /// will display in the search results set. When False, all the columns in the search result set
-        /// will show, but any columns in the <see cref="Columns"/> collection then override specific columns.
-        /// </summary>
-        public bool ExplicitlyIncludeColumns
-        {
-            get;
-            set;
-        }
-
-        private bool HasDataProvider
-        {
-            get
-            {
-                return DataProvider != null && SearchProvider != null;
-            }
-        }
-
-        private bool HasItems
-        {
-            get
-            {
-                return Items != null && Items.Count > 0;
-            }
-        }
-
-        /// <summary>
-        /// When True, columns in the search result set will not have headers. This is a Dependancy Property.
-        /// </summary>
-        public bool HideColumnHeaders
-        {
-            get
-            {
-                return (bool)GetValue(HideColumnHeadersProperty);
-            }
-            set
-            {
-                SetValue(HideColumnHeadersProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// When true, means that the control is in 'Search' mode.
-        /// i.e. that it is firing searches as the user types and waiting for results.
-        /// </summary>
-        private bool IsSearchInProgress
-        {
-            get
-            {
-                return SearchTimer != null;
-            }
-        }
-
-        /// <summary>
-        /// This is the binding target of the <see cref="SelectedValueBinding"/> property,
-        /// so that users of the control can place their own bindings on the <see cref="SelectedValue"/> property.
-        /// </summary>
-        private object IntermediateSelectedValue
-        {
-            get
-            {
-                return (object)GetValue(IntermediateSelectedValueProperty);
-            }
-            set
-            {
-                SetValue(IntermediateSelectedValueProperty, value);
-            }
-        }
-
-        private IList Items
-        {
-            get
-            {
-                return (IList)GetValue(ItemsProperty);
-            }
-            set
-            {
-                SetValue(ItemsProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the maximum number of results that the <see cref="Intellibox"/> asks
-        /// its <see cref="IIntelliboxResultsProvider"/> for. This is a Dependancy Property.
-        /// </summary>
-        public int MaxResults
-        {
-            get
-            {
-                return (int)GetValue(MaxResultsProperty);
-            }
-            set
-            {
-                SetValue(MaxResultsProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// The minimum number of characters to wait for the user to enter before starting the first search.
-        /// After the first search has been started, the <see cref="MinimumSearchDelay"/> property controls how often
-        /// additional searches are performed (assumming that additional text has been entered).
-        /// Minimum value is 1 (one). Defaults to 1 (one);
-        /// </summary>
-        public int MinimumPrefixLength
-        {
-            get
-            {
-                return (int)GetValue(MinimumPrefixLengthProperty);
-            }
-            set
-            {
-                SetValue(MinimumPrefixLengthProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// The number of milliseconds the <see cref="Intellibox"/> control will wait between searches
-        /// when the user is rapidly entering text. Minimum is 125 milliseconds. Defaults to 250 milliseconds.
-        /// </summary>
-        public int MinimumSearchDelay
-        {
-            get
-            {
-                return (int)GetValue(MinimumSearchDelayProperty);
-            }
-            set
-            {
-                SetValue(MinimumSearchDelayProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// The number of rows to scroll up or down when a user uses the Page Up or Page Down key.
-        /// </summary>
-        public int PagingScrollRows
-        {
-            get
-            {
-                return (int)GetValue(PagingScrollRowsProperty);
-            }
-            set
-            {
-                SetValue(PagingScrollRowsProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// Internal Use Only. Do Not Use. This property exists so that the <see cref="Intellibox"/>
-        /// can run in partial-trust;
-        /// </summary>
-        public ListView ResultsList
-        {
-            get
-            {
-                return lstSearchItems;
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the suggested height that the search results popup.
-        /// The default value is 200.
-        /// This is a Dependancy Property.
-        /// </summary>
-        public double ResultsHeight
-        {
-            get
-            {
-                return (double)GetValue(ResultsHeightProperty);
-            }
-            set
-            {
-                SetValue(ResultsHeightProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the maximum height that the search results popup is allowed to have.
-        /// This is a Dependancy Property.
-        /// </summary>
-        public double ResultsMaxHeight
-        {
-            get
-            {
-                return (double)GetValue(ResultsMaxHeightProperty);
-            }
-            set
-            {
-                SetValue(ResultsMaxHeightProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the maximum width that the search results popup is allowed to have.
-        /// This is a Dependancy Property.
-        /// </summary>
-        public double ResultsMaxWidth
-        {
-            get
-            {
-                return (double)GetValue(ResultsMaxWidthProperty);
-            }
-            set
-            {
-                SetValue(ResultsMaxWidthProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the minimum height that the search results popup is allowed to have.
-        /// This is a Dependancy Property.
-        /// </summary>
-        public double ResultsMinHeight
-        {
-            get
-            {
-                return (double)GetValue(ResultsMinHeightProperty);
-            }
-            set
-            {
-                SetValue(ResultsMinHeightProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the minimum width that the search results popup is allowed to have.
-        /// This is a Dependancy Property.
-        /// </summary>
-        public double ResultsMinWidth
-        {
-            get
-            {
-                return (double)GetValue(ResultsMinWidthProperty);
-            }
-            set
-            {
-                SetValue(ResultsMinWidthProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the suggested width that the search results popup is allowed to have.
-        /// The default value is 400.
-        /// This is a Dependancy Property.
-        /// </summary>
-        public double ResultsWidth
-        {
-            get
-            {
-                return (double)GetValue(ResultsWidthProperty);
-            }
-            set
-            {
-                SetValue(ResultsWidthProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the <see cref="IntelliboxAlternateRowColorizer"/> used to color each row of the search result set.
-        /// Set to an instance of <see cref="IntelliboxRowColorizer"/> by default.
-        /// </summary>
-        public IntelliboxRowColorizer RowColorizer
-        {
-            get
-            {
-                return _rowColorizer;
-            }
-            set
-            {
-                if (_rowColorizer != value)
-                {
-                    _rowColorizer = value;
-                    OnRowColorizerChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// The Search provider that will actually perform the search
-        /// </summary>
-        private IntelliboxAsyncProvider SearchProvider
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
-        /// Using a dispatcher timer so that the 'Tick' event gets posted on the UI thread and
-        /// we don't have to worry about exceptions throwing when accessing UI controls.
-        /// </summary>
-        private DispatcherTimer SearchTimer
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
-        /// When true, all of the text in the field will be selected when the control gets focus.
-        /// </summary>
-        public bool SelectAllOnFocus
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
-        /// The data row from the search result set that the user has most recently selected and confirmed.
-        /// This is a Dependancy Property.
-        /// </summary>
-        public object SelectedItem
-        {
-            get
-            {
-                return (object)GetValue(SelectedItemProperty);
-            }
-            set
-            {
-                SetValue(SelectedItemProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// A value out of the <see cref="SelectedItem"/>. The exact value depends on
-        /// the <see cref="SelectedValueBinding"/> property. This is a Dependancy Property.
-        /// </summary>
-        public object SelectedValue
-        {
-            get
-            {
-                return (object)GetValue(SelectedValueProperty);
-            }
-            set
-            {
-                SetValue(SelectedValueProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// A binding expression that determines what <see cref="SelectedValue"/>
-        /// will be chosen out of the <see cref="SelectedItem"/>. If this property is
-        /// NULL, then the entire <see cref="SelectedItem"/> is chosen as the <see cref="SelectedValue"/>.
-        /// This property exists so that the <see cref="SelectedValue" /> can differ from the
-        /// value displayed in the text field.
-        /// This is a Dependancy Property.
-        /// </summary>
-        public BindingBase SelectedValueBinding
-        {
-            get
-            {
-                return _selectedValueBinding;
-            }
-            set
-            {
-                if (_selectedValueBinding != value)
-                {
-                    _selectedValueBinding = value;
-                    OnSelectedValueBindingChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// When <see cref="true"/> query results that have only a single result will will be automatically selected.
-        /// </summary>
-        public bool AutoSelectSingleResult
-        {
-            get
-            {
-                return (bool)GetValue(AutoSelectSingleResultProperty);
-            }
-            set
-            {
-                SetValue(AutoSelectSingleResultProperty, value);
-            }
-        }
-
-        private bool ShowResults
-        {
-            get
-            {
-                return (bool)GetValue(ShowResultsProperty);
-            }
-            set
-            {
-                SetValue(ShowResultsProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// The amount of time (in milliseconds) that the <see cref="Intellibox"/> control
-        /// will wait for results to come back before showing the user a "Waiting for results" message.
-        /// Minimum: 0ms, Default: 125ms
-        /// </summary>
-        public int TimeBeforeWaitNotification
-        {
-            get
-            {
-                return (int)GetValue(TimeBeforeWaitNotificationProperty);
-            }
-            set
-            {
-                SetValue(TimeBeforeWaitNotificationProperty, value);
-            }
-        }
-
-        private DispatcherTimer WaitNotificationTimer
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
-        /// Sets the background <see cref="Brush"/> of the <see cref="WatermarkText"/> when it is displayed.
-        /// </summary>
-        public Brush WatermarkBackground
-        {
-            get
-            {
-                return (Brush)GetValue(WatermarkBackgroundProperty);
-            }
-            set
-            {
-                SetValue(WatermarkBackgroundProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// Sets the <see cref="FontStyle"/> of the <see cref="WatermarkText"/> when it is displayed.
-        /// Default is <see cref="FontStyles.Italic"/>.
-        /// </summary>
-        public FontStyle WatermarkFontStyle
-        {
-            get
-            {
-                return (FontStyle)GetValue(WatermarkFontStyleProperty);
-            }
-            set
-            {
-                SetValue(WatermarkFontStyleProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// Sets the <see cref="FontWeight"/> of the <see cref="WatermarkText"/> when it is displayed.
-        /// </summary>
-        public FontWeight WatermarkFontWeight
-        {
-            get
-            {
-                return (FontWeight)GetValue(WatermarkFontWeightProperty);
-            }
-            set
-            {
-                SetValue(WatermarkFontWeightProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// Sets the foreground <see cref="Brush"/> of the <see cref="WatermarkText"/> when it is displayed.
-        /// Default is <see cref="Colors.Gray"/>.
-        /// </summary>
-        public Brush WatermarkForeground
-        {
-            get
-            {
-                return (Brush)GetValue(WatermarkForegroundProperty);
-            }
-            set
-            {
-                SetValue(WatermarkForegroundProperty, value);
-            }
-        }
-
-        /// <summary>
-        /// Sets the text that is displayed when the <see cref="Intellibox"/> doesn't have focus or any entered content.
-        /// </summary>
-        public string WatermarkText
-        {
-            get
-            {
-                return (string)GetValue(WatermarkTextProperty);
-            }
-            set
-            {
-                SetValue(WatermarkTextProperty, value);
-            }
-        }
-
-        private Style ZeroHeightColumnHeader
-        {
-            get
-            {
-                var noHeader = new Style(typeof(GridViewColumnHeader));
-                noHeader.Setters.Add(new Setter(GridViewColumnHeader.HeightProperty, 0.0));
-                return noHeader;
-            }
-        }
-
-        /// <summary>
-        /// Applies the <see cref="DisableWhitespaceTrim"/> property to the <paramref name="input"/> text.
-        /// The return value is always non-null.
-        /// </summary>
-        /// <param name="input">the string to which <see cref="DisableWhitespaceTrim"/> should be applied.</param>
-        /// <returns>
-        /// If <see cref="DisableWhitespaceTrim"/> is true, returns <paramref name="input"/> unmodified.
-        /// Otherwise the function returns the result of input.Trim(), or string.Empty if input is null.
-        /// </returns>
-        private string ApplyDisableWhitespaceTrim(string input)
-        {
-            // if the entered text isn't supposed to be trimmed, then use it as-is
-            // otherwise Trim() it if it's not null, or set to string.Empty if it is null
-            return DisableWhitespaceTrim
-                    ? input
-                    : (string.IsNullOrEmpty(input) ? string.Empty : input.Trim());
-        }
-
-        /// <summary>
-        /// Initializes the <see cref="Intellibox" />, preparing it to accept data entry
-        /// and retrieve results from the <see cref="DataProvider"/>.
+        ///     Initializes the <see cref="Intellibox" />, preparing it to accept data entry
+        ///     and retrieve results from the <see cref="DataProvider" />.
         /// </summary>
         public Intellibox()
         {
@@ -890,28 +279,429 @@ namespace FeserWard.Controls
             OnSelectedValueBindingChanged();
             OnDisplayedValueBindingChanged();
 
-            RowColorizer = new IntelliboxAlternateRowColorizer()
+            RowColorizer = new IntelliboxAlternateRowColorizer
             {
                 OddRowBrush = Brushes.Gainsboro
             };
 
-            this.DataContextChanged += new DependencyPropertyChangedEventHandler(Intellibox_DataContextChanged);
+            DataContextChanged += Intellibox_DataContextChanged;
         }
 
-        void Intellibox_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        /// <summary>
+        ///     Cancel all pending searches for the provider.
+        /// </summary>
+        public ICommand CancelAllSearches
         {
+            get { return _cancelAllSearches ?? (_cancelAllSearches = new DelegateCommand(CancelSelection)); }
+        }
 
-            var expr = this.GetBindingExpression(SelectedItemProperty);
-            if (expr == null)
+        /// <summary>
+        ///     The columns in the search result set to display. When <see cref="ExplicitlyIncludeColumns" />
+        ///     is set to true, then only the <see cref="IntelliboxColumn" />s in this collection will be shown.
+        ///     Setting <see cref="HideColumnHeaders" /> to true will prevent column headers from being shown.
+        /// </summary>
+        public IntelliboxColumnCollection Columns { get; set; }
+
+        /// <summary>
+        ///     This is the <see cref="IIntelliboxResultsProvider" /> that the <see cref="Intellibox" /> uses
+        ///     to ask for search results. This is a Dependancy Property.
+        /// </summary>
+        public IIntelliboxResultsProvider DataProvider
+        {
+            get => (IIntelliboxResultsProvider)GetValue(DataProviderProperty);
+            set => SetValue(DataProviderProperty, value);
+        }
+
+        /// <summary>
+        ///     When True, the text in the search field will NOT be trimmed for
+        ///     whitespace prior to being passed to the <see cref="DataProvider" />.
+        /// </summary>
+        public bool DisableWhitespaceTrim { get; set; }
+
+        /// <summary>
+        ///     A binding expression that determines which column in the search result set
+        ///     displays its value in the text field. Typically, the value displayed should
+        ///     correspond to the column the <see cref="DataProvider" /> searches on. This binding
+        ///     expression can be different from the on in the <see cref="SelectedValueBinding" />.
+        ///     If this property is NULL, then an entire row from the search result set displays
+        ///     its value in the text field.
+        ///     This is a Dependancy Property.
+        /// </summary>
+        public BindingBase DisplayedValueBinding
+        {
+            get => _displayedValueBinding;
+            set
             {
+                if (_displayedValueBinding != value)
+                {
+                    _displayedValueBinding = value;
+                    //the call is commented out so that people can type w/o the displayed value overwriting what they're trying to do
+                    OnDisplayedValueBindingChanged();
+                }
+            }
+        }
+
+        private string DisplayTextFromHighlightedItem
+        {
+            get => (string)GetValue(DisplayTextFromHighlightedItemProperty);
+            set => SetValue(DisplayTextFromHighlightedItemProperty, value);
+        }
+
+        private string DisplayTextFromSelectedItem
+        {
+            get => (string)GetValue(DisplayTextFromSelectedItemProperty);
+            set => SetValue(DisplayTextFromSelectedItemProperty, value);
+        }
+
+        /// <summary>
+        ///     When True, only the <see cref="IntelliboxColumn" />s in the <see cref="Columns" /> collection
+        ///     will display in the search results set. When False, all the columns in the search result set
+        ///     will show, but any columns in the <see cref="Columns" /> collection then override specific columns.
+        /// </summary>
+        public bool ExplicitlyIncludeColumns { get; set; }
+
+        private bool HasDataProvider => DataProvider != null && SearchProvider != null;
+
+        private bool HasItems => Items != null && Items.Count > 0;
+
+        /// <summary>
+        ///     When True, columns in the search result set will not have headers. This is a Dependancy Property.
+        /// </summary>
+        public bool HideColumnHeaders
+        {
+            get => (bool)GetValue(HideColumnHeadersProperty);
+            set => SetValue(HideColumnHeadersProperty, value);
+        }
+
+        /// <summary>
+        ///     When true, means that the control is in 'Search' mode.
+        ///     i.e. that it is firing searches as the user types and waiting for results.
+        /// </summary>
+        private bool IsSearchInProgress => SearchTimer != null;
+
+        /// <summary>
+        ///     This is the binding target of the <see cref="SelectedValueBinding" /> property,
+        ///     so that users of the control can place their own bindings on the <see cref="SelectedValue" /> property.
+        /// </summary>
+        private object IntermediateSelectedValue
+        {
+            get => GetValue(IntermediateSelectedValueProperty);
+            set => SetValue(IntermediateSelectedValueProperty, value);
+        }
+
+        private IList Items
+        {
+            get => (IList)GetValue(ItemsProperty);
+            set => SetValue(ItemsProperty, value);
+        }
+
+        /// <summary>
+        ///     Gets or sets the maximum number of results that the <see cref="Intellibox" /> asks
+        ///     its <see cref="IIntelliboxResultsProvider" /> for. This is a Dependancy Property.
+        /// </summary>
+        public int MaxResults
+        {
+            get => (int)GetValue(MaxResultsProperty);
+            set => SetValue(MaxResultsProperty, value);
+        }
+
+        /// <summary>
+        ///     The minimum number of characters to wait for the user to enter before starting the first search.
+        ///     After the first search has been started, the <see cref="MinimumSearchDelay" /> property controls how often
+        ///     additional searches are performed (assumming that additional text has been entered).
+        ///     Minimum value is 1 (one). Defaults to 1 (one);
+        /// </summary>
+        public int MinimumPrefixLength
+        {
+            get => (int)GetValue(MinimumPrefixLengthProperty);
+            set => SetValue(MinimumPrefixLengthProperty, value);
+        }
+
+        /// <summary>
+        ///     The number of milliseconds the <see cref="Intellibox" /> control will wait between searches
+        ///     when the user is rapidly entering text. Minimum is 125 milliseconds. Defaults to 250 milliseconds.
+        /// </summary>
+        public int MinimumSearchDelay
+        {
+            get => (int)GetValue(MinimumSearchDelayProperty);
+            set => SetValue(MinimumSearchDelayProperty, value);
+        }
+
+        /// <summary>
+        ///     The number of rows to scroll up or down when a user uses the Page Up or Page Down key.
+        /// </summary>
+        public int PagingScrollRows
+        {
+            get => (int)GetValue(PagingScrollRowsProperty);
+            set => SetValue(PagingScrollRowsProperty, value);
+        }
+
+        /// <summary>
+        ///     Internal Use Only. Do Not Use. This property exists so that the <see cref="Intellibox" />
+        ///     can run in partial-trust;
+        /// </summary>
+        public ListView ResultsList => lstSearchItems;
+
+        /// <summary>
+        ///     Gets or sets the suggested height that the search results popup.
+        ///     The default value is 200.
+        ///     This is a Dependancy Property.
+        /// </summary>
+        public double ResultsHeight
+        {
+            get => (double)GetValue(ResultsHeightProperty);
+            set => SetValue(ResultsHeightProperty, value);
+        }
+
+        /// <summary>
+        ///     Gets or sets the maximum height that the search results popup is allowed to have.
+        ///     This is a Dependancy Property.
+        /// </summary>
+        public double ResultsMaxHeight
+        {
+            get => (double)GetValue(ResultsMaxHeightProperty);
+            set => SetValue(ResultsMaxHeightProperty, value);
+        }
+
+        /// <summary>
+        ///     Gets or sets the maximum width that the search results popup is allowed to have.
+        ///     This is a Dependancy Property.
+        /// </summary>
+        public double ResultsMaxWidth
+        {
+            get => (double)GetValue(ResultsMaxWidthProperty);
+            set => SetValue(ResultsMaxWidthProperty, value);
+        }
+
+        /// <summary>
+        ///     Gets or sets the minimum height that the search results popup is allowed to have.
+        ///     This is a Dependancy Property.
+        /// </summary>
+        public double ResultsMinHeight
+        {
+            get => (double)GetValue(ResultsMinHeightProperty);
+            set => SetValue(ResultsMinHeightProperty, value);
+        }
+
+        /// <summary>
+        ///     Gets or sets the minimum width that the search results popup is allowed to have.
+        ///     This is a Dependancy Property.
+        /// </summary>
+        public double ResultsMinWidth
+        {
+            get => (double)GetValue(ResultsMinWidthProperty);
+            set => SetValue(ResultsMinWidthProperty, value);
+        }
+
+        /// <summary>
+        ///     Gets or sets the suggested width that the search results popup is allowed to have.
+        ///     The default value is 400.
+        ///     This is a Dependancy Property.
+        /// </summary>
+        public double ResultsWidth
+        {
+            get => (double)GetValue(ResultsWidthProperty);
+            set => SetValue(ResultsWidthProperty, value);
+        }
+
+        /// <summary>
+        ///     Gets or sets the <see cref="IntelliboxAlternateRowColorizer" /> used to color each row of the search result set.
+        ///     Set to an instance of <see cref="IntelliboxRowColorizer" /> by default.
+        /// </summary>
+        public IntelliboxRowColorizer RowColorizer
+        {
+            get => _rowColorizer;
+            set
+            {
+                if (_rowColorizer != value)
+                {
+                    _rowColorizer = value;
+                    OnRowColorizerChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        ///     The Search provider that will actually perform the search
+        /// </summary>
+        private IntelliboxAsyncProvider SearchProvider { get; set; }
+
+        /// <summary>
+        ///     Using a dispatcher timer so that the 'Tick' event gets posted on the UI thread and
+        ///     we don't have to worry about exceptions throwing when accessing UI controls.
+        /// </summary>
+        private DispatcherTimer SearchTimer { get; set; }
+
+        /// <summary>
+        ///     When true, all of the text in the field will be selected when the control gets focus.
+        /// </summary>
+        public bool SelectAllOnFocus { get; set; }
+
+        /// <summary>
+        ///     The data row from the search result set that the user has most recently selected and confirmed.
+        ///     This is a Dependancy Property.
+        /// </summary>
+        public object SelectedItem
+        {
+            get => GetValue(SelectedItemProperty);
+            set => SetValue(SelectedItemProperty, value);
+        }
+
+        /// <summary>
+        ///     A value out of the <see cref="SelectedItem" />. The exact value depends on
+        ///     the <see cref="SelectedValueBinding" /> property. This is a Dependancy Property.
+        /// </summary>
+        public object SelectedValue
+        {
+            get => GetValue(SelectedValueProperty);
+            set => SetValue(SelectedValueProperty, value);
+        }
+
+        /// <summary>
+        ///     A binding expression that determines what <see cref="SelectedValue" />
+        ///     will be chosen out of the <see cref="SelectedItem" />. If this property is
+        ///     NULL, then the entire <see cref="SelectedItem" /> is chosen as the <see cref="SelectedValue" />.
+        ///     This property exists so that the <see cref="SelectedValue" /> can differ from the
+        ///     value displayed in the text field.
+        ///     This is a Dependancy Property.
+        /// </summary>
+        public BindingBase SelectedValueBinding
+        {
+            get => _selectedValueBinding;
+            set
+            {
+                if (_selectedValueBinding != value)
+                {
+                    _selectedValueBinding = value;
+                    OnSelectedValueBindingChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        ///     When <see cref="true" /> query results that have only a single result will will be automatically selected.
+        /// </summary>
+        public bool AutoSelectSingleResult
+        {
+            get => (bool)GetValue(AutoSelectSingleResultProperty);
+            set => SetValue(AutoSelectSingleResultProperty, value);
+        }
+
+        private bool ShowResults
+        {
+            get => (bool)GetValue(ShowResultsProperty);
+            set => SetValue(ShowResultsProperty, value);
+        }
+
+        /// <summary>
+        ///     The amount of time (in milliseconds) that the <see cref="Intellibox" /> control
+        ///     will wait for results to come back before showing the user a "Waiting for results" message.
+        ///     Minimum: 0ms, Default: 125ms
+        /// </summary>
+        public int TimeBeforeWaitNotification
+        {
+            get => (int)GetValue(TimeBeforeWaitNotificationProperty);
+            set => SetValue(TimeBeforeWaitNotificationProperty, value);
+        }
+
+        private DispatcherTimer WaitNotificationTimer { get; set; }
+
+        /// <summary>
+        ///     Sets the background <see cref="Brush" /> of the <see cref="WatermarkText" /> when it is displayed.
+        /// </summary>
+        public Brush WatermarkBackground
+        {
+            get => (Brush)GetValue(WatermarkBackgroundProperty);
+            set => SetValue(WatermarkBackgroundProperty, value);
+        }
+
+        /// <summary>
+        ///     Sets the <see cref="FontStyle" /> of the <see cref="WatermarkText" /> when it is displayed.
+        ///     Default is <see cref="FontStyles.Italic" />.
+        /// </summary>
+        public FontStyle WatermarkFontStyle
+        {
+            get => (FontStyle)GetValue(WatermarkFontStyleProperty);
+            set => SetValue(WatermarkFontStyleProperty, value);
+        }
+
+        /// <summary>
+        ///     Sets the <see cref="FontWeight" /> of the <see cref="WatermarkText" /> when it is displayed.
+        /// </summary>
+        public FontWeight WatermarkFontWeight
+        {
+            get => (FontWeight)GetValue(WatermarkFontWeightProperty);
+            set => SetValue(WatermarkFontWeightProperty, value);
+        }
+
+        /// <summary>
+        ///     Sets the foreground <see cref="Brush" /> of the <see cref="WatermarkText" /> when it is displayed.
+        ///     Default is <see cref="Colors.Gray" />.
+        /// </summary>
+        public Brush WatermarkForeground
+        {
+            get => (Brush)GetValue(WatermarkForegroundProperty);
+            set => SetValue(WatermarkForegroundProperty, value);
+        }
+
+        /// <summary>
+        ///     Sets the text that is displayed when the <see cref="Intellibox" /> doesn't have focus or any entered content.
+        /// </summary>
+        public string WatermarkText
+        {
+            get => (string)GetValue(WatermarkTextProperty);
+            set => SetValue(WatermarkTextProperty, value);
+        }
+
+        private Style ZeroHeightColumnHeader
+        {
+            get
+            {
+                var noHeader = new Style(typeof(GridViewColumnHeader));
+                noHeader.Setters.Add(new Setter(HeightProperty, 0.0));
+                return noHeader;
+            }
+        }
+
+        /// <summary>
+        ///     This event is fired immediately before a new search is started.
+        ///     Note that not every <see cref="SearchBeginning" /> event has a matching <see cref="SearchCompleted" /> event.
+        /// </summary>
+        public event Action<string, int, object> SearchBeginning;
+
+        /// <summary>
+        ///     This event is fired once a search has completed and the search results have been processed.
+        ///     Note that not every <see cref="SearchBeginning" /> event has a matching <see cref="SearchCompleted" /> event.
+        /// </summary>
+        public event Action SearchCompleted;
+
+        /// <summary>
+        ///     Applies the <see cref="DisableWhitespaceTrim" /> property to the <paramref name="input" /> text.
+        ///     The return value is always non-null.
+        /// </summary>
+        /// <param name="input">the string to which <see cref="DisableWhitespaceTrim" /> should be applied.</param>
+        /// <returns>
+        ///     If <see cref="DisableWhitespaceTrim" /> is true, returns <paramref name="input" /> unmodified.
+        ///     Otherwise the function returns the result of input.Trim(), or string.Empty if input is null.
+        /// </returns>
+        private string ApplyDisableWhitespaceTrim(string input)
+        {
+            // if the entered text isn't supposed to be trimmed, then use it as-is
+            // otherwise Trim() it if it's not null, or set to string.Empty if it is null
+            return DisableWhitespaceTrim
+                ? input
+                : (string.IsNullOrEmpty(input) ? string.Empty : input.Trim());
+        }
+
+        private void Intellibox_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            var expr = GetBindingExpression(SelectedItemProperty);
+            if (expr == null)
                 SelectedItem = null;
-            }
 
-            expr = this.GetBindingExpression(SelectedValueProperty);
+            expr = GetBindingExpression(SelectedValueProperty);
             if (expr == null)
-            {
                 SelectedValue = null;
-            }
         }
 
         private void CancelSelection()
@@ -921,9 +711,7 @@ namespace FeserWard.Controls
             OnUserEndedSearchEvent();
 
             if (Items != null)
-            {
                 Items = null;
-            }
         }
 
         private static object CoerceMinimumPrefixLengthProperty(DependencyObject reciever, object val)
@@ -951,28 +739,24 @@ namespace FeserWard.Controls
 
         private void ChooseCurrentItem()
         {
-            this.SetValue(SelectedItemProperty, ResultsList.SelectedItem);
+            SetValue(SelectedItemProperty, ResultsList.SelectedItem);
 
             _lastTextValue = UpdateSearchBoxText(true);
 
             OnUserEndedSearchEvent();
 
             if (Items != null)
-            {
                 Items = null;
-            }
         }
 
         private GridView ConstructGridView(object item)
         {
             var view = new GridView();
 
-            bool isBaseType = IsBaseType(item);
+            var isBaseType = IsBaseType(item);
 
             if (isBaseType || HideColumnHeaders)
-            {
                 view.ColumnHeaderContainerStyle = ZeroHeightColumnHeader;
-            }
 
             if (isBaseType)
             {
@@ -988,9 +772,7 @@ namespace FeserWard.Controls
             if (ExplicitlyIncludeColumns && Columns != null && Columns.Count > 0)
             {
                 foreach (var col in Columns.Where(c => !c.Hide).OrderBy(c => c.Position ?? int.MaxValue))
-                {
                     view.Columns.Add(CloneHelper.Clone(col));
-                }
                 return view;
             }
 
@@ -998,7 +780,7 @@ namespace FeserWard.Controls
                                   where p.CanRead && p.CanWrite
                                   select new
                                   {
-                                      Name = p.Name,
+                                      p.Name,
                                       Column = Columns.FirstOrDefault(c => p.Name.Equals(c.ForProperty))
                                   }).ToList();
 
@@ -1012,7 +794,6 @@ namespace FeserWard.Controls
             var sortedProperties = typesWithPositions.Concat(typesWithoutPositions);
 
             foreach (var currentProperty in sortedProperties)
-            {
                 if (currentProperty.Column != null)
                 {
                     if (!currentProperty.Column.Hide)
@@ -1020,14 +801,10 @@ namespace FeserWard.Controls
                         var gvc = CloneHelper.Clone(currentProperty.Column);
 
                         if (gvc.Header == null)
-                        { // TODO check if this is bound to anything
                             gvc.Header = currentProperty.Name;
-                        }
 
                         if (gvc.DisplayMemberBinding == null)
-                        {
                             gvc.DisplayMemberBinding = new Binding(currentProperty.Name);
-                        }
 
                         view.Columns.Add(gvc);
                     }
@@ -1040,7 +817,6 @@ namespace FeserWard.Controls
                     gvc.DisplayMemberBinding = new Binding(currentProperty.Name);
                     view.Columns.Add(gvc);
                 }
-            }
 
             return view;
         }
@@ -1066,23 +842,16 @@ namespace FeserWard.Controls
         private void HighlightNextItem(Key pressed)
         {
             if (ResultsList != null && HasItems)
-            {
-                //I used this solution partially
-                //http://connect.microsoft.com/VisualStudio/feedback/ViewFeedback.aspx?FeedbackID=324064
-                //the only way I have been able to solve the lockups is to use the background priority
-                //the default still causes lockups.
-                //be very careful changing this line
                 Dispatcher.BeginInvoke(new Action<Key>(HighlightNewItem), DispatcherPriority.Background, pressed);
-            }
         }
 
         /// <summary>
-        /// Because of a bug in .NET, this method should only ever be called from the dispatcher,
-        /// and only ever with 'DispatcherPriority.Background'
-        /// <para>
-        /// See the following link for more details.
-        /// http://connect.microsoft.com/VisualStudio/feedback/ViewFeedback.aspx?FeedbackID=324064
-        /// </para>
+        ///     Because of a bug in .NET, this method should only ever be called from the dispatcher,
+        ///     and only ever with 'DispatcherPriority.Background'
+        ///     <para>
+        ///         See the following link for more details.
+        ///         http://connect.microsoft.com/VisualStudio/feedback/ViewFeedback.aspx?FeedbackID=324064
+        ///     </para>
         /// </summary>
         private void HighlightNewItem(Key pressed)
         {
@@ -1091,23 +860,19 @@ namespace FeserWard.Controls
                 ? ResultsList.SelectedIndex + GetIncrementValueForKey(pressed)
                 : ResultsList.SelectedIndex - GetIncrementValueForKey(pressed);
 
-            int maxIndex = Items.Count - 1; //dangerous, since the list could be really large
+            var maxIndex = Items.Count - 1; //dangerous, since the list could be really large
 
             if (nextIndex < 0)
-            {
                 if (ResultsList.SelectedIndex != 0)
                     nextIndex = 0;
                 else
                     nextIndex = maxIndex;
-            }
 
             if (nextIndex >= maxIndex)
-            {
                 if (ResultsList.SelectedIndex != maxIndex)
                     nextIndex = maxIndex;
                 else
                     nextIndex = 0;
-            }
 
             var selectedItem = Items[nextIndex];
 
@@ -1134,22 +899,23 @@ namespace FeserWard.Controls
         private bool IsNavigationKey(Key pressed)
         {
             return pressed == Key.Down
-                || pressed == Key.Up
-                || pressed == Key.NumPad8
-                || pressed == Key.NumPad2
-                || pressed == Key.PageUp    //TODO need to handle navigation keys that skip items
-                || pressed == Key.PageDown;
+                   || pressed == Key.Up
+                   || pressed == Key.NumPad8
+                   || pressed == Key.NumPad2
+                   || pressed == Key.PageUp //TODO need to handle navigation keys that skip items
+                   || pressed == Key.PageDown;
         }
 
         /// <summary>
-        /// Set the last value and Call OnSearchBeginning and BeginSearchAsync
+        ///     Set the last value and Call OnSearchBeginning and BeginSearchAsync
         /// </summary>
         /// <param name="current">The last typed in value</param>
         private void CreateSearch(string current)
         {
             _lastTextValue = current;
             OnSearchBeginning(current, MaxResults, Tag);
-            SearchProvider.BeginSearchAsync(current, DateTime.Now.ToUniversalTime(), MaxResults, Tag, ProcessSearchResults);
+            SearchProvider.BeginSearchAsync(current, DateTime.Now.ToUniversalTime(), MaxResults, Tag,
+                ProcessSearchResults);
         }
 
         private static void OnDataProviderChanged(DependencyObject receiver, DependencyPropertyChangedEventArgs args)
@@ -1162,25 +928,22 @@ namespace FeserWard.Controls
                 var provider = args.NewValue as IIntelliboxResultsProvider;
                 //Create the wrapper used to make the calls async. This hides the details from the user.
                 ib.SearchProvider = new IntelliboxAsyncProvider(provider.DoSearch);
-                ib._selectValueCallBack = new Func<string, string>(provider.GetCurrentText);
+                ib._selectValueCallBack = provider.GetCurrentText;
             }
         }
 
         private void OnDisplayedValueBindingChanged()
         {
             if (ResultsList != null)
-            {
-                this.SetBinding(Intellibox.DisplayTextFromHighlightedItemProperty,
+                SetBinding(DisplayTextFromHighlightedItemProperty,
                     BindingBaseFactory.ConstructBindingForHighlighted(this, DisplayedValueBinding));
-            }
 
-            this.SetBinding(Intellibox.DisplayTextFromSelectedItemProperty,
+            SetBinding(DisplayTextFromSelectedItemProperty,
                 BindingBaseFactory.ConstructBindingForSelected(this, DisplayedValueBinding));
         }
 
         private static void OnIsDropDownOpenChanged(DependencyObject receiver, DependencyPropertyChangedEventArgs args)
         {
-
         }
 
         private static void OnSelectedItemChanged(DependencyObject receiver, DependencyPropertyChangedEventArgs args)
@@ -1199,15 +962,18 @@ namespace FeserWard.Controls
 
         private static void OnSelectedValueChanged(DependencyObject receiver, DependencyPropertyChangedEventArgs args)
         {
-            Intellibox intellibox = receiver as Intellibox;
-            bool flag = intellibox == null;
+            var intellibox = receiver as Intellibox;
+            var flag = intellibox == null;
             if (!flag)
             {
-                intellibox.SetValue(Intellibox.SelectedValueProperty, args.NewValue);
-                string text = (args.NewValue == null) ? "" : intellibox._selectValueCallBack(args.NewValue.ToString());
+                intellibox.SetValue(SelectedValueProperty, args.NewValue);
+                var text = args.NewValue == null ? "" : intellibox._selectValueCallBack(args.NewValue.ToString());
+                //这里把显示值等都明确的赋值
+                intellibox.SetValue(DisplayTextFromSelectedItemProperty, text);
                 intellibox._lastTextValue = intellibox.UpdateSelectValueBoxText(text);
             }
         }
+
         private void OnListItemMouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             ChooseCurrentItem();
@@ -1217,16 +983,17 @@ namespace FeserWard.Controls
         {
             if (IsInitialized)
             {
-                var bind = new Binding()
+                var bind = new Binding
                 {
                     RelativeSource = RelativeSource.Self,
                     Converter = RowColorizer
                 };
 
                 var style = new Style(typeof(ListViewItem));
-                style.Setters.Add(new Setter(ListViewItem.BackgroundProperty, bind));
+                style.Setters.Add(new Setter(BackgroundProperty, bind));
 
-                var sett = new EventSetter(ListViewItem.MouseDoubleClickEvent, new MouseButtonEventHandler(OnListItemMouseDoubleClick));
+                var sett = new EventSetter(MouseDoubleClickEvent,
+                    new MouseButtonEventHandler(OnListItemMouseDoubleClick));
                 style.Setters.Add(sett);
 
                 Resources[typeof(ListViewItem)] = style;
@@ -1240,35 +1007,31 @@ namespace FeserWard.Controls
             if (WaitNotificationTimer == null && !ShowResults)
             {
                 WaitNotificationTimer = new DispatcherTimer(
-                            TimeSpan.FromMilliseconds(TimeBeforeWaitNotification),
-                            DispatcherPriority.Background,
-                            new EventHandler(OnWaitNotificationTimerTick),
-                            this.Dispatcher);
+                    TimeSpan.FromMilliseconds(TimeBeforeWaitNotification),
+                    DispatcherPriority.Background,
+                    OnWaitNotificationTimerTick,
+                    Dispatcher);
 
                 WaitNotificationTimer.Start();
             }
 
             var e = SearchBeginning;
             if (e != null)
-            {
                 e(term, max, data);
-            }
         }
 
         private void OnSearchCompleted()
         {
             var e = SearchCompleted;
             if (e != null)
-            {
                 e();
-            }
         }
 
         /// <summary>
-        /// Called whenever (and ONLY whenever) the user has either
-        /// 1. selected an item from the result set
-        /// 2. decided not to select an item from the result set
-        /// 3. cleared the currently selected item
+        ///     Called whenever (and ONLY whenever) the user has either
+        ///     1. selected an item from the result set
+        ///     2. decided not to select an item from the result set
+        ///     3. cleared the currently selected item
         /// </summary>
         private void OnUserEndedSearchEvent()
         {
@@ -1287,9 +1050,7 @@ namespace FeserWard.Controls
             }
 
             if (SearchProvider != null)
-            {
                 SearchProvider.CancelAllSearches();
-            }
 
             ShowResults = false;
             noResultsPopup.IsOpen = false;
@@ -1306,18 +1067,16 @@ namespace FeserWard.Controls
                 // we don't want to search for an empty string, but unlike the first search, we don't want
                 // empty search strings to cancel existing searches, because that responsibility
                 // belongs to the the code that kicks off the first search
-                bool startAnotherSearch = !last.Equals(current) && !string.IsNullOrEmpty(current);
+                var startAnotherSearch = !last.Equals(current) && !string.IsNullOrEmpty(current);
                 if (startAnotherSearch)
-                {
                     CreateSearch(current);
-                }
             }
         }
 
         private void OnSelectedValueBindingChanged()
         {
             var bind = BindingBaseFactory.ConstructBindingForSelected(this, SelectedValueBinding);
-            this.SetBinding(IntermediateSelectedValueProperty, bind);
+            SetBinding(IntermediateSelectedValueProperty, bind);
         }
 
         private void OnTextBoxKeyUp(object sender, KeyEventArgs e)
@@ -1326,15 +1085,11 @@ namespace FeserWard.Controls
                 return;
 
             if (IsCancelKey(e.Key) || IsChooseCurrentItemKey(e.Key) || IsNavigationKey(e.Key))
-            {
                 return;
-            }
 
             var field = sender as TextBox;
             if (field != null)
-            {
                 PerformSearchActions(field.Text);
-            }
         }
 
         private void Part_ClearButton_OnClick(object sender, RoutedEventArgs e)
@@ -1345,7 +1100,6 @@ namespace FeserWard.Controls
             DirectSearchActions(PART_EDITFIELD.Text);
         }
 
-       
 
         private void OnTextBoxPreviewKeyDown(object sender, KeyEventArgs e)
         {
@@ -1380,19 +1134,19 @@ namespace FeserWard.Controls
 
             if (string.IsNullOrEmpty(enteredText))
             {
-                this.SelectedItem = null;
+                SelectedItem = null;
                 OnUserEndedSearchEvent();
             }
             else
             {
-                bool doSearchNow = !IsSearchInProgress && enteredText.Length >= MinimumPrefixLength;
+                var doSearchNow = !IsSearchInProgress && enteredText.Length >= MinimumPrefixLength;
                 if (doSearchNow)
                 {
                     SearchTimer = new DispatcherTimer(
                         TimeSpan.FromMilliseconds(MinimumSearchDelay),
                         DispatcherPriority.Background,
-                        new EventHandler(OnSearchTimerTick),
-                        this.Dispatcher);
+                        OnSearchTimerTick,
+                        Dispatcher);
 
                     CreateSearch(enteredText);
                     SearchTimer.Start();
@@ -1401,7 +1155,7 @@ namespace FeserWard.Controls
         }
 
         /// <summary>
-        /// Dires the search actions.
+        ///     Dires the search actions.
         /// </summary>
         /// <param name="s">The s.</param>
         /// <exception cref="NotImplementedException"></exception>
@@ -1410,8 +1164,8 @@ namespace FeserWard.Controls
             SearchTimer = new DispatcherTimer(
                 TimeSpan.FromMilliseconds(MinimumSearchDelay),
                 DispatcherPriority.Background,
-                new EventHandler(OnSearchTimerTick),
-                this.Dispatcher);
+                OnSearchTimerTick,
+                Dispatcher);
 
             CreateSearch(enteredText);
             SearchTimer.Start();
@@ -1420,21 +1174,19 @@ namespace FeserWard.Controls
         private void OnWaitNotificationTimerTick(object sender, EventArgs args)
         {
             if (WaitNotificationTimer != null)
-            {
                 WaitNotificationTimer.Stop();
-            }
 
             // this timer only needs to fire once
             WaitNotificationTimer = null;
 
             //determine if we have any active searches
-            bool activeSearches = SearchProvider != null && SearchProvider.HasActiveSearches;
+            var activeSearches = SearchProvider != null && SearchProvider.HasActiveSearches;
 
             waitingForResultsPopup.IsOpen = IsSearchInProgress && !ShowResults && activeSearches;
         }
 
         /// <summary>
-        /// Called when a search completes to process the search results.
+        ///     Called when a search completes to process the search results.
         /// </summary>
         /// <param name="startTimeUtc"></param>
         /// <param name="results"></param>
@@ -1450,9 +1202,9 @@ namespace FeserWard.Controls
 
             Items = results == null
                 ? new List<string>()
-                : ((results is IList)
+                : (results is IList
                     ? (IList)results //optimization to keep from making a copy of the list
-                    : (IList)results.Cast<object>().ToList());
+                    : results.Cast<object>().ToList());
 
             noResultsPopup.IsOpen = Items.Count < 1;
 
@@ -1476,28 +1228,23 @@ namespace FeserWard.Controls
 
         private string UpdateSearchBoxText(bool useSelectedItem)
         {
-
             var text = useSelectedItem
-                ? this.DisplayTextFromSelectedItem
-                : this.DisplayTextFromHighlightedItem;
+                ? DisplayTextFromSelectedItem
+                : DisplayTextFromHighlightedItem;
 
             PART_EDITFIELD.Text = text;
             if (!string.IsNullOrEmpty(text))
-            {
                 PART_EDITFIELD.CaretIndex = text.Length;
-            }
 
             return text;
         }
 
         private string UpdateSelectValueBoxText(string text)
         {
-            this.PART_EDITFIELD.Text = text;
-            bool flag = !string.IsNullOrEmpty(text);
+            PART_EDITFIELD.Text = text;
+            var flag = !string.IsNullOrEmpty(text);
             if (flag)
-            {
-                this.PART_EDITFIELD.CaretIndex = text.Length;
-            }
+                PART_EDITFIELD.CaretIndex = text.Length;
             return text;
         }
 
@@ -1509,9 +1256,7 @@ namespace FeserWard.Controls
         private void PART_EDITFIELD_GotFocus(object sender, RoutedEventArgs e)
         {
             if (SelectAllOnFocus)
-            {
                 PART_EDITFIELD.SelectAll();
-            }
         }
 
         private void lstSearchItems_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -1519,19 +1264,14 @@ namespace FeserWard.Controls
             if (IsCancelKey(e.Key))
             {
                 CancelSelection();
-                return;
             }
         }
 
         private void Popup_PreviewMouseButton(object sender, MouseButtonEventArgs e)
         {
-            var pop = sender as System.Windows.Controls.Primitives.Popup;
+            var pop = sender as Popup;
             if (pop != null && pop.IsOpen == false)
-            {
                 CancelSelection();
-            }
         }
-
-
     }
 }

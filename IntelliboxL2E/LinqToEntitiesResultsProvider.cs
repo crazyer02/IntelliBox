@@ -50,5 +50,10 @@ namespace IntelliboxL2E {
             return l2eIsNotFun;
             //}
         }
+
+        public string GetCurrentText(string selectedValue)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

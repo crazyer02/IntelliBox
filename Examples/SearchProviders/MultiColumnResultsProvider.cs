@@ -56,7 +56,7 @@ namespace Examples.SearchProviders
 
         public string GetCurrentText(string selectedValue)
         {
-            throw new NotImplementedException();
+            return _results.FirstOrDefault(a => a.PersonID.ToString()==selectedValue).FirstName;
         }
 
         private class Person {

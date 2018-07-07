@@ -39,7 +39,12 @@ namespace Examples.SearchProviders {
 				};
 		}
 
-		private class testresult {
+	    public string GetCurrentText(string selectedValue)
+	    {
+	        throw new NotImplementedException();
+	    }
+
+	    private class testresult {
 			public string Name {
 				get;
 				set;

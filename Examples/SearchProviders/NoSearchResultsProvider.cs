@@ -35,5 +35,10 @@ namespace Examples.SearchProviders
         public IEnumerable DoSearch(string searchTerm, int maxResults, object tag) {
             return new List<object>();
         }
+
+        public string GetCurrentText(string selectedValue)
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

@@ -40,6 +40,11 @@ namespace FeserWard.Controls {
         /// <param name="extraInfo">This is the value of the Tag property of the <see cref="Intellibox"/> control at the time the search was started. Use the Tag property to pass any custom data to your <see cref="IIntelliboxResultsProvider" />.</param>
         IEnumerable DoSearch(string searchTerm, int maxResults, object extraInfo);
 
+        /// <summary>
+        /// 根据value返回display的文本.
+        /// </summary>
+        /// <param name="selectedValue">The selected value.</param>
+        /// <returns>System.String.</returns>
         string GetCurrentText(string selectedValue);
     }
 }

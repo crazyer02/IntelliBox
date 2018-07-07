@@ -37,5 +37,10 @@ namespace Examples.SearchProviders
 
             };
         }
+
+        public string GetCurrentText(string selectedValue)
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }
